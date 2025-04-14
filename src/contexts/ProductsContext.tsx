@@ -1,9 +1,9 @@
-
 import { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { Product, ProductsContextType } from '@/types';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import * as ProductApi from '@/api/products';
 
-// This would come from a real API/database in production
 const mockProducts: Product[] = [
   {
     id: '1',
@@ -43,50 +43,45 @@ export const ProductsProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
-    // Load products from localStorage or use mock data
-    const loadProducts = () => {
+    const loadProducts = async () => {
+      if (!user) {
+        setProducts([]);
+        setLoading(false);
+        return;
+      }
+
       try {
-        const storedProducts = localStorage.getItem('products');
-        if (storedProducts) {
-          setProducts(JSON.parse(storedProducts));
-        } else {
-          // Use mock data for initial state
-          setProducts(mockProducts);
-          localStorage.setItem('products', JSON.stringify(mockProducts));
-        }
+        setLoading(true);
+        const loadedProducts = await ProductApi.getAllProducts(user.id);
+        setProducts(loadedProducts);
         setLoading(false);
       } catch (err) {
-        setError('Failed to load products');
+        console.error('Failed to load products from MongoDB:', err);
+        setError('Failed to load products. Using fallback data.');
+        
+        setProducts(mockProducts);
         setLoading(false);
-        console.error(err);
       }
     };
 
     loadProducts();
-  }, []);
+  }, [user]);
 
-  const persistProducts = (updatedProducts: Product[]) => {
-    try {
-      localStorage.setItem('products', JSON.stringify(updatedProducts));
-    } catch (err) {
-      console.error('Failed to persist products:', err);
-      setError('Failed to save changes');
-    }
-  };
+  const addProduct = async (product: Omit<Product, 'id' | 'createdAt'>) => {
+    if (!user) return;
 
-  const addProduct = (product: Omit<Product, 'id' | 'createdAt'>) => {
     try {
-      const newProduct: Product = {
+      setLoading(true);
+      const newProduct = await ProductApi.addProduct({
         ...product,
-        id: Date.now().toString(),
-        createdAt: new Date().toISOString()
-      };
+        userId: user.id
+      });
       
-      const updatedProducts = [...products, newProduct];
-      setProducts(updatedProducts);
-      persistProducts(updatedProducts);
+      setProducts(prev => [...prev, newProduct]);
+      setLoading(false);
       
       toast({
         title: 'Product added',
@@ -94,57 +89,52 @@ export const ProductsProvider = ({ children }: { children: ReactNode }) => {
       });
     } catch (err) {
       setError('Failed to add product');
+      setLoading(false);
       console.error(err);
     }
   };
 
-  const updateProduct = (id: string, updatedData: Partial<Product>) => {
+  const updateProduct = async (id: string, updatedData: Partial<Product>) => {
     try {
-      const productIndex = products.findIndex(p => p.id === id);
+      setLoading(true);
+      await ProductApi.updateProduct(id, updatedData);
       
-      if (productIndex === -1) {
-        setError('Product not found');
-        return;
-      }
-      
-      const updatedProducts = [...products];
-      updatedProducts[productIndex] = {
-        ...updatedProducts[productIndex],
-        ...updatedData
-      };
+      const updatedProducts = products.map(product => 
+        product.id === id ? { ...product, ...updatedData } : product
+      );
       
       setProducts(updatedProducts);
-      persistProducts(updatedProducts);
+      setLoading(false);
       
       toast({
         title: 'Product updated',
-        description: `${updatedProducts[productIndex].name} has been updated.`,
+        description: `Product has been updated.`,
       });
     } catch (err) {
       setError('Failed to update product');
+      setLoading(false);
       console.error(err);
     }
   };
 
-  const deleteProduct = (id: string, reason: Product['deletionReason']) => {
+  const deleteProduct = async (id: string, reason: Product['deletionReason']) => {
     try {
+      setLoading(true);
+      await ProductApi.deleteProduct(id, reason);
+      
       const product = products.find(p => p.id === id);
-      
-      if (!product) {
-        setError('Product not found');
-        return;
-      }
-      
       const updatedProducts = products.filter(p => p.id !== id);
+      
       setProducts(updatedProducts);
-      persistProducts(updatedProducts);
+      setLoading(false);
       
       toast({
         title: 'Product removed',
-        description: `${product.name} has been removed (${reason}).`,
+        description: `${product?.name || 'Product'} has been removed (${reason}).`,
       });
     } catch (err) {
       setError('Failed to delete product');
+      setLoading(false);
       console.error(err);
     }
   };
