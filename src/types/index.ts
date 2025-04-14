@@ -1,10 +1,9 @@
-
 // Type definitions for the application
 
 export type UserAuth = {
   id: string;
-  username: string;
   email: string;
+  username?: string;
 };
 
 export type ProductCategory = 'food' | 'medicine' | 'cosmetics' | 'other';
@@ -33,13 +32,13 @@ export type Product = {
 };
 
 // Auth context types
-export type AuthContextType = {
+export interface AuthContextType {
   user: UserAuth | null;
-  login: (email: string, password: string) => Promise<void>;
-  register: (username: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<any>; // Changed from Promise<void> to Promise<any>
+  register: (username: string, email: string, password: string) => Promise<any>; // Changed from Promise<void> to Promise<any>
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
-};
+}
 
 // Products context types
 export type ProductsContextType = {
