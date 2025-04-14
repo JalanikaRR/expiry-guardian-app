@@ -1,71 +1,124 @@
 
-import { connectToDatabase, Product } from '@/lib/mongodb';
+import { supabase } from '@/lib/supabase';
 import { Product as ProductType } from '@/types';
 
-// Connect to the database
-const getDb = async () => {
-  await connectToDatabase();
-  return Product;
-};
-
-// Get all products
-export async function getAllProducts(userId: string): Promise<ProductType[]> {
-  const Product = await getDb();
-  const products = await Product.find({ userId }).sort({ expiryDate: 1 });
-  
-  return products.map((product: any) => ({
-    id: product._id.toString(),
+// Function to convert Supabase product to application product
+const mapSupabaseProductToProduct = (product: any): ProductType => {
+  return {
+    id: product.id,
     name: product.name,
     category: product.category,
-    expiryDate: product.expiryDate.toISOString(),
-    createdAt: product.createdAt.toISOString(),
+    expiryDate: product.expiry_date,
+    createdAt: product.created_at,
     notes: product.notes,
-    storageInstructions: product.storageInstructions,
+    storageInstructions: product.storage_instructions,
     opened: product.opened,
-    openedDate: product.openedDate ? product.openedDate.toISOString() : undefined,
+    openedDate: product.opened_date,
     dosage: product.dosage,
-    prescriptionDetails: product.prescriptionDetails,
+    prescriptionDetails: product.prescription_details,
     frequency: product.frequency,
-    openAfterUse: product.openAfterUse,
-  }));
+    openAfterUse: product.open_after_use,
+  };
+};
+
+// Get all products for a user
+export async function getAllProducts(userId: string): Promise<ProductType[]> {
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .eq('user_id', userId)
+    .order('expiry_date', { ascending: true });
+  
+  if (error) {
+    console.error('Error fetching products:', error);
+    throw error;
+  }
+  
+  return data ? data.map(mapSupabaseProductToProduct) : [];
 }
 
 // Add a new product
 export async function addProduct(productData: Omit<ProductType, 'id' | 'createdAt'> & { userId: string }): Promise<ProductType> {
-  const Product = await getDb();
+  const { userId, ...rest } = productData;
   
-  const newProduct = new Product({
-    ...productData,
-    createdAt: new Date(),
-  });
-  
-  await newProduct.save();
-  
-  return {
-    id: newProduct._id.toString(),
-    name: newProduct.name,
-    category: newProduct.category,
-    expiryDate: newProduct.expiryDate.toISOString(),
-    createdAt: newProduct.createdAt.toISOString(),
-    notes: newProduct.notes,
-    storageInstructions: newProduct.storageInstructions,
-    opened: newProduct.opened,
-    openedDate: newProduct.openedDate ? newProduct.openedDate.toISOString() : undefined,
-    dosage: newProduct.dosage,
-    prescriptionDetails: newProduct.prescriptionDetails,
-    frequency: newProduct.frequency,
-    openAfterUse: newProduct.openAfterUse,
+  // Convert to snake_case for Supabase
+  const supabaseProduct = {
+    name: rest.name,
+    category: rest.category,
+    expiry_date: rest.expiryDate,
+    notes: rest.notes,
+    storage_instructions: rest.storageInstructions,
+    opened: rest.opened,
+    opened_date: rest.openedDate,
+    dosage: rest.dosage,
+    prescription_details: rest.prescriptionDetails,
+    frequency: rest.frequency,
+    open_after_use: rest.openAfterUse,
+    user_id: userId,
+    created_at: new Date().toISOString(),
   };
+  
+  const { data, error } = await supabase
+    .from('products')
+    .insert(supabaseProduct)
+    .select()
+    .single();
+  
+  if (error) {
+    console.error('Error adding product:', error);
+    throw error;
+  }
+  
+  return mapSupabaseProductToProduct(data);
 }
 
 // Update a product
 export async function updateProduct(id: string, updatedData: Partial<ProductType>): Promise<void> {
-  const Product = await getDb();
-  await Product.findByIdAndUpdate(id, updatedData);
+  // Convert to snake_case for Supabase
+  const supabaseUpdate = {
+    name: updatedData.name,
+    category: updatedData.category,
+    expiry_date: updatedData.expiryDate,
+    notes: updatedData.notes,
+    storage_instructions: updatedData.storageInstructions,
+    opened: updatedData.opened,
+    opened_date: updatedData.openedDate,
+    dosage: updatedData.dosage,
+    prescription_details: updatedData.prescriptionDetails,
+    frequency: updatedData.frequency,
+    open_after_use: updatedData.openAfterUse,
+  };
+  
+  // Remove undefined values
+  Object.keys(supabaseUpdate).forEach(key => {
+    if (supabaseUpdate[key as keyof typeof supabaseUpdate] === undefined) {
+      delete supabaseUpdate[key as keyof typeof supabaseUpdate];
+    }
+  });
+  
+  const { error } = await supabase
+    .from('products')
+    .update(supabaseUpdate)
+    .eq('id', id);
+  
+  if (error) {
+    console.error('Error updating product:', error);
+    throw error;
+  }
 }
 
-// Delete a product
+// Delete a product (or mark as deleted with reason)
 export async function deleteProduct(id: string, reason: ProductType['deletionReason']): Promise<void> {
-  const Product = await getDb();
-  await Product.findByIdAndUpdate(id, { deletionReason: reason, deletedAt: new Date() });
+  const { error } = await supabase
+    .from('products')
+    .update({ 
+      deletion_reason: reason,
+      deleted_at: new Date().toISOString() 
+    })
+    .eq('id', id);
+  
+  if (error) {
+    console.error('Error deleting product:', error);
+    throw error;
+  }
 }

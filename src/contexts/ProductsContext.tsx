@@ -59,7 +59,7 @@ export const ProductsProvider = ({ children }: { children: ReactNode }) => {
         setProducts(loadedProducts);
         setLoading(false);
       } catch (err) {
-        console.error('Failed to load products from MongoDB:', err);
+        console.error('Failed to load products from Supabase:', err);
         setError('Failed to load products. Using fallback data.');
         
         setProducts(mockProducts);
