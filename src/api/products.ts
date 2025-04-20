@@ -1,6 +1,7 @@
 
 import { supabase } from '@/lib/supabase';
 import { Product as ProductType } from '@/types';
+import { Database } from '@/types/supabase';
 
 // Function to convert Supabase product to application product
 const mapSupabaseProductToProduct = (product: Database['public']['Tables']['products']['Row']): ProductType => {
