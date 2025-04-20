@@ -24,6 +24,7 @@ const mapSupabaseProductToProduct = (product: Database['public']['Tables']['prod
 
 // Get all products for a user
 export async function getAllProducts(userId: string): Promise<ProductType[]> {
+  console.log('Fetching products for user:', userId);
   const { data, error } = await supabase
     .from('products')
     .select()
@@ -42,6 +43,7 @@ export async function getAllProducts(userId: string): Promise<ProductType[]> {
 // Add a new product
 export async function addProduct(productData: Omit<ProductType, 'id' | 'createdAt'> & { userId: string }): Promise<ProductType> {
   const { userId, ...rest } = productData;
+  console.log('Adding product for user:', userId, 'with data:', rest);
   
   const supabaseProduct = {
     name: rest.name,
@@ -67,6 +69,10 @@ export async function addProduct(productData: Omit<ProductType, 'id' | 'createdA
   if (error) {
     console.error('Error adding product:', error);
     throw error;
+  }
+  
+  if (!data) {
+    throw new Error('No data returned after adding product');
   }
   
   return mapSupabaseProductToProduct(data);

@@ -1,3 +1,4 @@
+
 import { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { Product, ProductsContextType } from '@/types';
 import { useToast } from '@/hooks/use-toast';
@@ -55,6 +56,7 @@ export const ProductsProvider = ({ children }: { children: ReactNode }) => {
 
       try {
         setLoading(true);
+        console.log('Loading products for user:', user.id);
         const loadedProducts = await ProductApi.getAllProducts(user.id);
         setProducts(loadedProducts);
         setLoading(false);
@@ -71,10 +73,19 @@ export const ProductsProvider = ({ children }: { children: ReactNode }) => {
   }, [user]);
 
   const addProduct = async (product: Omit<Product, 'id' | 'createdAt'>) => {
-    if (!user) return;
+    if (!user) {
+      toast({
+        title: 'Authentication required',
+        description: 'You must be logged in to add products.',
+        variant: 'destructive'
+      });
+      return;
+    }
 
     try {
       setLoading(true);
+      console.log('Adding product for user:', user.id, product);
+      
       const newProduct = await ProductApi.addProduct({
         ...product,
         userId: user.id
@@ -87,10 +98,16 @@ export const ProductsProvider = ({ children }: { children: ReactNode }) => {
         title: 'Product added',
         description: `${product.name} has been added successfully.`,
       });
-    } catch (err) {
+    } catch (err: any) {
       setError('Failed to add product');
       setLoading(false);
-      console.error(err);
+      console.error('Error adding product:', err);
+      
+      toast({
+        title: 'Failed to add product',
+        description: err.message || 'An error occurred while adding the product.',
+        variant: 'destructive'
+      });
     }
   };
 
