@@ -3,21 +3,21 @@ import { supabase } from '@/lib/supabase';
 import { Product as ProductType } from '@/types';
 
 // Function to convert Supabase product to application product
-const mapSupabaseProductToProduct = (product: any): ProductType => {
+const mapSupabaseProductToProduct = (product: Database['public']['Tables']['products']['Row']): ProductType => {
   return {
     id: product.id,
     name: product.name,
-    category: product.category,
+    category: product.category as ProductType['category'],
     expiryDate: product.expiry_date,
     createdAt: product.created_at,
-    notes: product.notes,
-    storageInstructions: product.storage_instructions,
-    opened: product.opened,
-    openedDate: product.opened_date,
-    dosage: product.dosage,
-    prescriptionDetails: product.prescription_details,
-    frequency: product.frequency,
-    openAfterUse: product.open_after_use,
+    notes: product.notes || undefined,
+    storageInstructions: product.storage_instructions || undefined,
+    opened: product.opened || false,
+    openedDate: product.opened_date || undefined,
+    dosage: product.dosage || undefined,
+    prescriptionDetails: product.prescription_details || undefined,
+    frequency: product.frequency || undefined,
+    openAfterUse: product.open_after_use || undefined,
   };
 };
 
@@ -25,8 +25,9 @@ const mapSupabaseProductToProduct = (product: any): ProductType => {
 export async function getAllProducts(userId: string): Promise<ProductType[]> {
   const { data, error } = await supabase
     .from('products')
-    .select('*')
+    .select()
     .eq('user_id', userId)
+    .is('deleted_at', null)
     .order('expiry_date', { ascending: true });
   
   if (error) {
@@ -41,7 +42,6 @@ export async function getAllProducts(userId: string): Promise<ProductType[]> {
 export async function addProduct(productData: Omit<ProductType, 'id' | 'createdAt'> & { userId: string }): Promise<ProductType> {
   const { userId, ...rest } = productData;
   
-  // Convert to snake_case for Supabase
   const supabaseProduct = {
     name: rest.name,
     category: rest.category,
@@ -55,7 +55,6 @@ export async function addProduct(productData: Omit<ProductType, 'id' | 'createdA
     frequency: rest.frequency,
     open_after_use: rest.openAfterUse,
     user_id: userId,
-    created_at: new Date().toISOString(),
   };
   
   const { data, error } = await supabase
@@ -74,7 +73,6 @@ export async function addProduct(productData: Omit<ProductType, 'id' | 'createdA
 
 // Update a product
 export async function updateProduct(id: string, updatedData: Partial<ProductType>): Promise<void> {
-  // Convert to snake_case for Supabase
   const supabaseUpdate = {
     name: updatedData.name,
     category: updatedData.category,

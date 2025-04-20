@@ -14,55 +14,58 @@ export interface Database {
         Row: {
           id: string
           name: string
-          category: 'food' | 'medicine' | 'cosmetics' | 'other'
+          category: string
           expiry_date: string
           created_at: string
-          notes?: string
-          image?: string
-          storage_instructions?: string
-          opened?: boolean
-          opened_date?: string
-          dosage?: string
-          prescription_details?: string
-          frequency?: string
-          open_after_use?: string
-          deletion_reason?: 'consumed' | 'expired' | 'discarded' | 'other'
+          notes: string | null
+          image: string | null
+          storage_instructions: string | null
+          opened: boolean
+          opened_date: string | null
+          dosage: string | null
+          prescription_details: string | null
+          frequency: string | null
+          open_after_use: string | null
+          deletion_reason: string | null
+          deleted_at: string | null
           user_id: string
         }
         Insert: {
           id?: string
           name: string
-          category: 'food' | 'medicine' | 'cosmetics' | 'other'
+          category: string
           expiry_date: string
           created_at?: string
-          notes?: string
-          image?: string
-          storage_instructions?: string
+          notes?: string | null
+          image?: string | null
+          storage_instructions?: string | null
           opened?: boolean
-          opened_date?: string
-          dosage?: string
-          prescription_details?: string
-          frequency?: string
-          open_after_use?: string
-          deletion_reason?: 'consumed' | 'expired' | 'discarded' | 'other'
+          opened_date?: string | null
+          dosage?: string | null
+          prescription_details?: string | null
+          frequency?: string | null
+          open_after_use?: string | null
+          deletion_reason?: string | null
+          deleted_at?: string | null
           user_id: string
         }
         Update: {
           id?: string
           name?: string
-          category?: 'food' | 'medicine' | 'cosmetics' | 'other'
+          category?: string
           expiry_date?: string
           created_at?: string
-          notes?: string
-          image?: string
-          storage_instructions?: string
+          notes?: string | null
+          image?: string | null
+          storage_instructions?: string | null
           opened?: boolean
-          opened_date?: string
-          dosage?: string
-          prescription_details?: string
-          frequency?: string
-          open_after_use?: string
-          deletion_reason?: 'consumed' | 'expired' | 'discarded' | 'other'
+          opened_date?: string | null
+          dosage?: string | null
+          prescription_details?: string | null
+          frequency?: string | null
+          open_after_use?: string | null
+          deletion_reason?: string | null
+          deleted_at?: string | null
           user_id?: string
         }
       }
