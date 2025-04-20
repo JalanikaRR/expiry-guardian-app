@@ -1,8 +1,8 @@
-
 import { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import { AuthContextType, UserAuth } from '@/types';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
+import { useProfile } from '@/hooks/use-profile';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -19,14 +19,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (session?.user) {
-          const { id, email } = session.user;
-          if (email) {
-            setUser({
-              id,
-              email,
-              username: email.split('@')[0], // Fallback if username is not available
-            });
-          }
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('username, email')
+            .eq('id', session.user.id)
+            .single();
+
+          setUser({
+            id: session.user.id,
+            email: profile?.email || session.user.email || '',
+            username: profile?.username || session.user.email?.split('@')[0] || '',
+          });
         } else {
           setUser(null);
         }
@@ -41,25 +44,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const checkUser = async () => {
     try {
-      const { data } = await supabase.auth.getSession();
-      const { session } = data;
+      const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.user) {
-        const { id, email } = session.user;
-        if (email) {
-          // Get user details from profiles
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('username')
-            .eq('id', id)
-            .single();
-          
-          setUser({
-            id,
-            email,
-            username: profileData?.username || email.split('@')[0],
-          });
-        }
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('username, email')
+          .eq('id', session.user.id)
+          .single();
+
+        setUser({
+          id: session.user.id,
+          email: profile?.email || session.user.email || '',
+          username: profile?.username || session.user.email?.split('@')[0] || '',
+        });
       }
     } catch (error) {
       console.error('Error getting session:', error);
@@ -100,27 +98,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     
     try {
-      // Create user in Supabase Auth
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            username,
+          },
+        },
       });
       
       if (error) throw error;
-      
-      // If user was created, add to profiles table
-      if (data.user) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: data.user.id,
-            username,
-            email,
-            created_at: new Date().toISOString(),
-          });
-        
-        if (profileError) throw profileError;
-      }
       
       toast({
         title: 'Registration successful!',
