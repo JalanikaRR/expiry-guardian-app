@@ -1,0 +1,75 @@
+
+<svg
+  width="400"
+  height="350"
+  xmlns="http://www.w3.org/2000/svg"
+  role="img"
+  aria-label="Project Simple Flowchart"
+  style="background:#f0fdfa; font-family:Arial, sans-serif; font-size:12px;"
+>
+  <style>
+    .box {
+      fill: #14b8a6;
+      stroke: #07575b;
+      stroke-width: 2;
+      rx: 8;
+      ry: 8;
+    }
+    .text {
+      fill: white;
+      font-weight: bold;
+    }
+    .arrow {
+      stroke: #07575b;
+      stroke-width: 2;
+      fill: none;
+      marker-end: url(#arrowhead);
+    }
+  </style>
+
+  <defs>
+    <marker
+      id="arrowhead"
+      markerWidth="10"
+      markerHeight="7"
+      refX="10"
+      refY="3.5"
+      orient="auto"
+      fill="#07575b"
+    >
+      <polygon points="0 0, 10 3.5, 0 7" />
+    </marker>
+  </defs>
+
+  <!-- Root -->
+  <rect x="130" y="20" width="140" height="40" class="box" />
+  <text x="200" y="45" text-anchor="middle" class="text">Root: Index</text>
+
+  <!-- Authentication -->
+  <rect x="50" y="90" width="120" height="40" class="box" />
+  <text x="110" y="115" text-anchor="middle" class="text">Login / Register</text>
+
+  <!-- Dashboard -->
+  <rect x="230" y="90" width="140" height="40" class="box" />
+  <text x="300" y="115" text-anchor="middle" class="text">Dashboard</text>
+
+  <!-- Products -->
+  <rect x="30" y="170" width="140" height="40" class="box" />
+  <text x="100" y="195" text-anchor="middle" class="text">Add / View Products</text>
+
+  <!-- Statistics -->
+  <rect x="230" y="170" width="140" height="40" class="box" />
+  <text x="300" y="195" text-anchor="middle" class="text">Statistics</text>
+
+  <!-- NotFound -->
+  <rect x="130" y="250" width="140" height="40" class="box" />
+  <text x="200" y="275" text-anchor="middle" class="text">NotFound (404)</text>
+
+  <!-- Arrows -->
+  <path d="M200 60 L110 90" class="arrow" />
+  <path d="M200 60 L300 90" class="arrow" />
+  <path d="M160 130 L160 170" class="arrow" />
+  <path d="M300 130 L300 170" class="arrow" />
+  <path d="M160 210 L160 250" class="arrow" />
+  <path d="M300 210 L300 250" class="arrow" />
+</svg>
