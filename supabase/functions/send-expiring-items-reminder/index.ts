@@ -143,7 +143,7 @@ serve(async (req) => {
     
     // Use the deployed URL or a localhost fallback
     const baseUrl = SUPABASE_URL.replace(".supabase.co", "").replace("https://", "");
-    const loginUrl = `https://${baseUrl}.vercel.app/login`;
+    const loginUrl = `http://localhost:8081/login`;
 
     const html = `
       <h2 style="font-family:sans-serif">Hi ${user.username || user.email.split("@")[0]},</h2>
