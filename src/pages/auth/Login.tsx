@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,11 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { supabase } from '@/lib/supabase';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isSendingEmails, setIsSendingEmails] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -35,6 +36,27 @@ const Login = () => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const triggerExpiryEmails = async () => {
+    setIsSendingEmails(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-expiring-items-reminder');
+      if (error) throw error;
+      
+      toast({
+        title: 'Emails Sent',
+        description: data.message,
+      });
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Failed to send emails',
+        description: error instanceof Error ? error.message : 'An error occurred while sending emails',
+      });
+    } finally {
+      setIsSendingEmails(false);
     }
   };
 
@@ -96,6 +118,16 @@ const Login = () => {
             </div>
           </CardFooter>
         </form>
+        <div className="px-6 pb-6">
+          <Button 
+            variant="outline"
+            className="w-full mt-4"
+            onClick={triggerExpiryEmails}
+            disabled={isSendingEmails}
+          >
+            {isSendingEmails ? 'Sending Test Emails...' : 'Send Expiry Test Emails'}
+          </Button>
+        </div>
       </Card>
     </div>
   );
