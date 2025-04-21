@@ -1,1 +1,11 @@
+
 project_id = "uwbeluxqursailjvewdr"
+
+[functions.send-expiring-items-reminder]
+verify_jwt = false
+
+[cron]
+jobs = [
+  # Every day at 8 AM UTC, send expiring items emails.
+  { job = "call-send-expiring-items-reminder", schedule = "0 8 * * *", command = "send-expiring-items-reminder" }
+]
