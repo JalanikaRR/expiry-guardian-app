@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -48,13 +49,19 @@ const Login = () => {
       toast({
         title: 'Emails Sent',
         description: data.message,
+        duration: 10000, // Display for 10 seconds so details can be read
       });
+      
+      // Log detailed results for debugging
+      console.log('Email sending results:', data);
     } catch (error) {
       toast({
         variant: 'destructive',
         title: 'Failed to send emails',
         description: error instanceof Error ? error.message : 'An error occurred while sending emails',
+        duration: 10000,
       });
+      console.error('Email sending error:', error);
     } finally {
       setIsSendingEmails(false);
     }

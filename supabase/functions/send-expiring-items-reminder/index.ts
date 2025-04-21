@@ -10,14 +10,52 @@ const corsHeaders = {
 };
 
 function isTomorrow(dateStr: string) {
-  // Returns true if dateStr (ISO) is tomorrow in UTC
-  const itemDate = new Date(dateStr);
-  const now = new Date();
-  now.setUTCHours(0,0,0,0);
-  const tomorrow = new Date(now);
-  tomorrow.setUTCDate(now.getUTCDate() + 1);
-  const itemUTC = new Date(itemDate.getUTCFullYear(), itemDate.getUTCMonth(), itemDate.getUTCDate());
-  return itemUTC.getTime() === tomorrow.getTime();
+  // Better date comparison to handle different date formats
+  try {
+    const itemDate = new Date(dateStr);
+    
+    // For debugging
+    console.log(`Original date string: ${dateStr}`);
+    console.log(`Parsed date: ${itemDate.toISOString()}`);
+    
+    if (isNaN(itemDate.getTime())) {
+      console.error(`Invalid date: ${dateStr}`);
+      return false;
+    }
+    
+    const now = new Date();
+    
+    // Reset hours to compare dates only
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    
+    const itemDateOnly = new Date(itemDate.getFullYear(), itemDate.getMonth(), itemDate.getDate());
+    
+    // For debugging
+    console.log(`Today: ${today.toISOString()}`);
+    console.log(`Tomorrow: ${tomorrow.toISOString()}`);
+    console.log(`Item date: ${itemDateOnly.toISOString()}`);
+    console.log(`Is tomorrow: ${itemDateOnly.getTime() === tomorrow.getTime()}`);
+    
+    return itemDateOnly.getTime() === tomorrow.getTime();
+  } catch (error) {
+    console.error(`Error parsing date ${dateStr}:`, error);
+    return false;
+  }
+}
+
+function formatDate(dateStr: string): string {
+  try {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+  } catch (e) {
+    return dateStr;
+  }
 }
 
 serve(async (req) => {
@@ -43,38 +81,78 @@ serve(async (req) => {
     return new Response("Failed to fetch users", { status: 500, headers: corsHeaders });
   }
 
+  console.log(`Found ${users?.length || 0} users`);
+  
+  // For testing/debugging - include details of which users have expiring products
+  const userSummary: Record<string, any> = {};
   let emailsSent = 0, failures = 0;
   
   // 2. For each user, fetch their products expiring tomorrow
   for (const user of users ?? []) {
+    console.log(`Processing user: ${user.username || user.email}`);
+    
     const { data: products, error: prodError } = await supabase
       .from("products")
-      .select("name, expiry_date")
+      .select("id, name, expiry_date")
       .eq("user_id", user.id)
       .is("deleted_at", null);
 
     if (prodError) {
-      console.error("Error fetching products for user", user.id, prodError);
+      console.error(`Error fetching products for user ${user.id}`, prodError);
+      userSummary[user.email] = { error: prodError.message };
+      failures++;
       continue;
     }
 
-    const expiringItems = (products ?? []).filter(item => item.expiry_date && isTomorrow(item.expiry_date));
-    if (expiringItems.length === 0) continue;
+    console.log(`User ${user.email} has ${products?.length || 0} products`);
+    
+    // Log all products for debugging
+    if (products && products.length > 0) {
+      console.log(`Products for ${user.email}:`, 
+        products.map(p => ({ id: p.id, name: p.name, expiry: p.expiry_date })));
+    }
+
+    const expiringItems = (products ?? []).filter(item => {
+      const isExpiring = item.expiry_date && isTomorrow(item.expiry_date);
+      console.log(`Product ${item.name} expiring: ${isExpiring}, date: ${item.expiry_date}`);
+      return isExpiring;
+    });
+    
+    userSummary[user.email] = {
+      totalProducts: products?.length || 0,
+      expiringItems: expiringItems.length,
+      expiringProducts: expiringItems.map(i => i.name)
+    };
+
+    if (expiringItems.length === 0) {
+      console.log(`No expiring items for user ${user.email}`);
+      continue;
+    }
+
+    console.log(`Found ${expiringItems.length} expiring items for user ${user.email}`);
 
     // Compose HTML table of expiring products
     const itemsList = expiringItems
       .map(
-        item => `<tr><td style="padding:6px 10px;border-bottom:1px solid #eee;">${item.name}</td><td style="padding:6px 10px;border-bottom:1px solid #eee;">${item.expiry_date}</td></tr>`
+        item => `<tr>
+          <td style="padding:6px 10px;border-bottom:1px solid #eee;">${item.name}</td>
+          <td style="padding:6px 10px;border-bottom:1px solid #eee;">${formatDate(item.expiry_date)}</td>
+        </tr>`
       )
       .join("");
     
-    const loginUrl = `${SUPABASE_URL.replace(".co", ".co")}/login`; // Replace with your app’s login page URL, edit as needed
+    // Use the deployed URL or a localhost fallback
+    const baseUrl = SUPABASE_URL.replace(".supabase.co", "").replace("https://", "");
+    const loginUrl = `https://${baseUrl}.vercel.app/login`;
 
     const html = `
       <h2 style="font-family:sans-serif">Hi ${user.username || user.email.split("@")[0]},</h2>
       <p>The following items from your expiry tracker app are expiring <b>tomorrow</b>:</p>
       <table style="border-collapse:collapse;background:#f0fdfa">
-        <tr><th style="text-align:left;padding:6px 10px;">Item</th><th style="text-align:left;padding:6px 10px;">Expiry Date</th></tr>
+        <tr>
+          <th style="text-align:left;padding:6px 10px;">Item</th>
+          <th style="text-align:left;padding:6px 10px;">Expiry Date</th>
+        </tr>
         ${itemsList}
       </table>
       <p style="margin-top:20px">
@@ -84,14 +162,14 @@ serve(async (req) => {
     `;
 
     try {
-      await resend.emails.send({
+      const emailResponse = await resend.emails.send({
         from: "Expiry Tracker <onboarding@resend.dev>",
         to: [user.email],
         subject: "Reminder: Items expiring tomorrow",
         html,
       });
       emailsSent++;
-      console.log("Sent reminder to", user.email);
+      console.log("Sent reminder to", user.email, emailResponse);
     } catch (error) {
       console.error("Failed to send reminder to", user.email, error);
       failures++;
@@ -101,7 +179,9 @@ serve(async (req) => {
   return new Response(
     JSON.stringify({
       message: `Reminders sent: ${emailsSent}, errors: ${failures}`,
+      details: userSummary
     }),
     { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
   );
 });
+
